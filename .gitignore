@@ -1,0 +1,5 @@
+.env
+.pkl
+.faiss
+faiss_index
+llm_env
