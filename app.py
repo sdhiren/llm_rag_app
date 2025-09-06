@@ -38,10 +38,10 @@ CODEBASE_INDEX_PATH = "./faiss_index/faiss_codebase_index"
 # Load Vector Stores
 def get_or_create_store(docs: List[Document], path: str) -> FAISS:
     if os.path.exists(path):
-        print(f"🔄 Loading FAISS index from {path}")
+        print(f"Loading FAISS index from {path}")
         return FAISS.load_local(path, embedding_model, allow_dangerous_deserialization=True)
     else:
-        print(f"⚡ Creating new FAISS index at {path}")
+        print(f"Creating new FAISS index at {path}")
         splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
         chunks = splitter.split_documents(docs)
         store = FAISS.from_documents(chunks, embedding_model)
@@ -54,6 +54,11 @@ codebase_store = get_or_create_store(codebase_docs, CODEBASE_INDEX_PATH)
 confluence_retriever = confluence_store.as_retriever(search_kwargs={"k": 2})
 codebase_retriever = codebase_store.as_retriever(search_kwargs={"k": 2})
 
+system_message = f"""
+You are an assistant that answers user questions using internal documentation and code.
+Answer clearly and concisely. If unsure, say you don’t know.
+"""
+
 
 # RAG Query Handler
 def rag_query(query: str) -> str:
@@ -63,38 +68,44 @@ def rag_query(query: str) -> str:
     combined_context = "\n\n".join(
         [f"[Confluence] {doc.page_content}" for doc in confluence_results] +
         [f"[CodeBase] {doc.page_content}" for doc in codebase_results]
-    )
+    )    
 
-    prompt = f"""
-You are an assistant that answers user questions using internal documentation and code.
-
-User query: {query}
-
-Relevant context:
-{combined_context}
-
-Answer clearly and concisely. If unsure, say you don’t know.
-"""
-
-    response = llm.invoke(prompt)
-    return response.content
+    return combined_context
 
 # UI code with Gradio
 def chat_interface(query):
     return rag_query(query)
 
-with gr.Blocks() as demo:
-    gr.Markdown("RAG Demo")
-    with gr.Row():
-        with gr.Column():
-            query_input = gr.Textbox(label="Enter your query", placeholder="Ask about processes or code...")
-            submit_btn = gr.Button("Search")
-        with gr.Column():
-            response_output = gr.Textbox(label="Answer")
+def chat(message, history):    
+    messages = [{"role": "system", "content": system_message}]
+    
+    # Add history if exists
+    if history:
+        for h in history:            
+            if len(h) == 2:
+                messages.append({"role": "user", "content": str(h[0])})
+                messages.append({"role": "assistant", "content": str(h[1])})
+    
+    # Add current message
+    messages.append({"role": "user", "content": message})
+    
+    # Get and add context
+    context = rag_query(message)
+    messages[-1]["content"] = f"Context: {context}\n\nUser question: {message}"
 
-    submit_btn.click(fn=chat_interface, inputs=query_input, outputs=response_output)
+    # Create chat completion with explicit model name
+    stream = openai.chat.completions.create(
+        model="gpt-4",  # or "gpt-3.5-turbo" - replace with your actual model name
+        messages=messages,
+        stream=True
+    )
 
+    response = ""
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            response += chunk.choices[0].delta.content
+            yield response
 
-
-if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+if __name__ == "__main__":    
+    gr.ChatInterface(fn=chat, type="messages").launch(server_name="0.0.0.0", server_port=7860)
+    
