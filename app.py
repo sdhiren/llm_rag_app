@@ -14,7 +14,7 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+MODEL = "gpt-4o-mini"
 
 
 # Sample data to work with
@@ -81,21 +81,18 @@ def chat(message, history):
     
     # Add history if exists
     if history:
-        for h in history:            
-            if len(h) == 2:
-                messages.append({"role": "user", "content": str(h[0])})
-                messages.append({"role": "assistant", "content": str(h[1])})
+        messages = [{"role": "system", "content": system_message}] + history + [{"role": "user", "content": message}]
     
-    # Add current message
+    # Add use prompt
     messages.append({"role": "user", "content": message})
     
-    # Get and add context
+    # add context from Vector DB
     context = rag_query(message)
-    messages[-1]["content"] = f"Context: {context}\n\nUser question: {message}"
+    messages[-1]["content"] = f"Context: {context}"
 
     # Create chat completion with explicit model name
     stream = openai.chat.completions.create(
-        model="gpt-4",  # or "gpt-3.5-turbo" - replace with your actual model name
+        model=MODEL,
         messages=messages,
         stream=True
     )
