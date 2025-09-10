@@ -56,10 +56,6 @@ def get_or_create_store(docs: List[Document], path: str) -> FAISS:
 confluence_store = get_or_create_store(confluence_docs, DOC_INDEX_PATH)
 codebase_store = get_or_create_store(codebase_docs, CODEBASE_INDEX_PATH)
 
-confluence_retriever = confluence_store.as_retriever(search_kwargs={"k": 2})
-codebase_retriever = codebase_store.as_retriever(search_kwargs={"k": 2})
-
-
 def rag_query(query: str) -> str:
     # skip casual greetings
     casual_keywords = {"hi", "hello", "hey", "thanks", "thank you", "good morning", "good evening"}
