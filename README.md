@@ -17,7 +17,7 @@ A question-answering application that uses RAG (Retrieval Augmented Generation) 
 
 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone git@github.com:sdhiren/llm_rag_app.git
 cd llm_rag_app
 ```
 2. Create .env file with your OpenAI API key
