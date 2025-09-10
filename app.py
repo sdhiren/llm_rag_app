@@ -15,6 +15,11 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
 MODEL = "gpt-4o-mini"
+SYSTEM_MESSAGE = f"""
+You are a helpful assistant that answers user questions politely. You dont have to use internal context all the time, only when relevant question is asked.
+And when asked about code, security or deployment practices, please only use internal documentation/code and provided context.
+Answer clearly and concisely. If unsure, say so politely.
+"""
 
 
 # Sample data to work with
@@ -42,7 +47,7 @@ def get_or_create_store(docs: List[Document], path: str) -> FAISS:
         return FAISS.load_local(path, embedding_model, allow_dangerous_deserialization=True)
     else:
         print(f"Creating new FAISS index at {path}")
-        splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=10)
         chunks = splitter.split_documents(docs)
         store = FAISS.from_documents(chunks, embedding_model)
         store.save_local(path)
@@ -54,35 +59,44 @@ codebase_store = get_or_create_store(codebase_docs, CODEBASE_INDEX_PATH)
 confluence_retriever = confluence_store.as_retriever(search_kwargs={"k": 2})
 codebase_retriever = codebase_store.as_retriever(search_kwargs={"k": 2})
 
-system_message = f"""
-You are a helpful assistant that answers user questions politely. You dont have to use internal context all the time, only when relevant.
-And when asked about code, security or deployment practices, please use internal documentation and code.
-Answer clearly and concisely. If unsure, say so politely.
-"""
 
-
-# RAG Query Handler
 def rag_query(query: str) -> str:
-    confluence_results = confluence_retriever.get_relevant_documents(query)
-    codebase_results = codebase_retriever.get_relevant_documents(query)
+    # skip casual greetings
+    casual_keywords = {"hi", "hello", "hey", "thanks", "thank you", "good morning", "good evening"}
+    if query.strip().lower() in casual_keywords:
+        return ""
 
-    combined_context = "\n\n".join(
-        [f"[Confluence] {doc.page_content}" for doc in confluence_results] +
-        [f"[CodeBase] {doc.page_content}" for doc in codebase_results]
-    )
+    # Define a relevance score threshold
+    threshold = 2.0
 
-    return combined_context
+    # Perform similarity search with scores
+    confluence_results = confluence_store.similarity_search_with_score(query, k=2)
+    codebase_results = codebase_store.similarity_search_with_score(query, k=2)
+
+    # Filter results based on threshold
+    filtered_docs = [
+        doc for doc, score in (confluence_results + codebase_results) if score < threshold
+    ]
+
+    # If no relevant docs, return blank
+    if not filtered_docs:
+        return ""
+
+    # Otherwise, return concatenated context
+    context = "\n".join([doc.page_content for doc in filtered_docs])
+    return context
+
 
 # UI code with Gradio
 def chat_interface(query):
     return rag_query(query)
 
 def chat(message, history):    
-    messages = [{"role": "system", "content": system_message}]
+    messages = [{"role": "system", "content": SYSTEM_MESSAGE}]
     
     # Add history if exists
     if history:
-        messages = [{"role": "system", "content": system_message}] + history
+        messages = [{"role": "system", "content": SYSTEM_MESSAGE}] + history
     
     # Add use prompt
     messages.append({"role": "user", "content": message})
@@ -90,6 +104,8 @@ def chat(message, history):
     # add context from Vector DB
     context = rag_query(message)
     messages.append({"role": "user", "content": context})
+
+    print(f"Context sent to model: {context}")
 
     # Create chat completion with explicit model name
     stream = openai.chat.completions.create(
