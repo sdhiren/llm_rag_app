@@ -1,12 +1,14 @@
-# Core
 openai>=1.30.0
 tiktoken>=0.7.0
 pydantic>=2.5.3
 python-dotenv>=1.0.1
 
-# LangChain + OpenAI integration + Vector store
+# LangChain core and integrations
 langchain>=0.2.7
 langchain-openai>=0.1.13
+langchain-community>=0.0.21
+
+# Vector store
 faiss-cpu>=1.8.0
 
 # UI
