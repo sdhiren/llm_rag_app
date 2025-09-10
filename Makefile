@@ -1,4 +1,4 @@
-activate: 
+activate_venv: 
 	@echo "Activating virtual environment..."
 	@python3 -m venv llm_env
 	@. llm_env/bin/activate
