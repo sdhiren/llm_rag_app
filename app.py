@@ -31,7 +31,7 @@ codebase_docs = [
 ]
 
 
-CONFLUENCE_INDEX_PATH = "./faiss_index/faiss_confluence_index"
+DOC_INDEX_PATH = "./faiss_index/faiss_confluence_index"
 CODEBASE_INDEX_PATH = "./faiss_index/faiss_codebase_index"
 
 
@@ -48,15 +48,16 @@ def get_or_create_store(docs: List[Document], path: str) -> FAISS:
         store.save_local(path)
         return store
 
-confluence_store = get_or_create_store(confluence_docs, CONFLUENCE_INDEX_PATH)
+confluence_store = get_or_create_store(confluence_docs, DOC_INDEX_PATH)
 codebase_store = get_or_create_store(codebase_docs, CODEBASE_INDEX_PATH)
 
 confluence_retriever = confluence_store.as_retriever(search_kwargs={"k": 2})
 codebase_retriever = codebase_store.as_retriever(search_kwargs={"k": 2})
 
 system_message = f"""
-You are an assistant that answers user questions using internal documentation and code.
-Answer clearly and concisely. If unsure, say you don’t know.
+You are a helpful assistant that answers user questions politely. You dont have to use internal context all the time, only when relevant.
+And when asked about code, security or deployment practices, please use internal documentation and code.
+Answer clearly and concisely. If unsure, say so politely.
 """
 
 
@@ -68,7 +69,7 @@ def rag_query(query: str) -> str:
     combined_context = "\n\n".join(
         [f"[Confluence] {doc.page_content}" for doc in confluence_results] +
         [f"[CodeBase] {doc.page_content}" for doc in codebase_results]
-    )    
+    )
 
     return combined_context
 
@@ -81,14 +82,14 @@ def chat(message, history):
     
     # Add history if exists
     if history:
-        messages = [{"role": "system", "content": system_message}] + history + [{"role": "user", "content": message}]
+        messages = [{"role": "system", "content": system_message}] + history
     
     # Add use prompt
     messages.append({"role": "user", "content": message})
     
     # add context from Vector DB
     context = rag_query(message)
-    messages[-1]["content"] = f"Context: {context}"
+    messages.append({"role": "user", "content": context})
 
     # Create chat completion with explicit model name
     stream = openai.chat.completions.create(
