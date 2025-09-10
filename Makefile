@@ -5,3 +5,7 @@ activate:
 	@pip install --upgrade pip
 	@pip install -r requirements.txt
 	@echo "Virtual environment activated."
+
+run:
+	@echo "Running the application..."
+	@python app.py
