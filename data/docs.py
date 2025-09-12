@@ -9,5 +9,6 @@ confluence_docs = [
 codebase_docs = [
     Document(page_content="def calculate_discount(price, percentage): return price - (price * percentage/100)"),
     Document(page_content="class ShoppingCart: def __init__(self): self.items = []"),
-    Document(page_content="def connect_to_db(uri): # establishes a PostgreSQL connection using psycopg2.connect"),
+    Document(page_content="def connect_to_db(uri): return Database.connect(uri)"),
+    Document(page_content="def subtract(a , b): return a + b"),
 ]

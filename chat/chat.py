@@ -2,10 +2,6 @@ from query import context_search
 from config import settings
 import openai
 
-
-def chat_interface(query):
-    return context_search.rag_query(query)
-
 def chat(message, history):    
     messages = [{"role": "system", "content": settings.SYSTEM_MESSAGE}]
     
