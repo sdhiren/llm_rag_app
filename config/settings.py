@@ -20,3 +20,4 @@ Answer clearly and concisely. If unsure, say so politely.
 
 DOC_INDEX_PATH = "../data/faiss_index/faiss_confluence_index"
 CODEBASE_INDEX_PATH = "../data/faiss_index/faiss_codebase_index"
+BASE_PATH = "./data/__data"

@@ -4,3 +4,4 @@
 faiss_index
 llm_env
 *__pycache__
+__data

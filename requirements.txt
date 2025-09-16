@@ -13,3 +13,6 @@ faiss-cpu>=1.8.0
 
 # UI
 gradio>=4.44.0
+
+unstructured>=0.10.0
+pypdf>=3.12.0
